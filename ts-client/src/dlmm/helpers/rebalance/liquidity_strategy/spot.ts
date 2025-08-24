@@ -79,8 +79,49 @@ function findX0(
   if (minDeltaId.gt(maxDeltaId) || amountX.lte(new BN(0)) || amountX.isZero()) {
     return new BN(0);
   }
+
   let x0 = findBaseX0(amountX, minDeltaId, maxDeltaId, binStep, activeId);
 
+  // Helper function to calculate total amount for given x0
+  const calculateTotalAmount = (x0: BN): BN => {
+    const amountInBins = getAmountInBinsAskSide(
+      activeId,
+      binStep,
+      minDeltaId,
+      maxDeltaId,
+      new BN(0),
+      x0
+    );
+    return amountInBins.reduce((acc, bin) => acc.add(bin.amountX), new BN(0));
+  };
+
+  // Binary search for optimal x0
+  let low = new BN(0);
+  let high = x0.muln(2); // Start with 2x initial estimate as upper bound
+
+  // Ensure high bound produces amount >= target
+  while (calculateTotalAmount(high).lt(amountX)) {
+    high = high.muln(2);
+  }
+
+  // Binary search with precision tolerance
+  const maxIterations = 256;
+  let iteration = 0;
+
+  while (low.lt(high) && iteration < maxIterations) {
+    const mid = low.add(high).divn(2);
+    const totalAmount = calculateTotalAmount(mid);
+    
+    if (totalAmount.lt(amountX)) {
+      x0 = mid;
+      low = mid.addn(1);
+    } else {
+      high = mid;
+    }
+    iteration++;
+  }
+  
+  // If binary search didn't converge, fall back to original linear search
   while (true) {
     const amountInBins = getAmountInBinsAskSide(
       activeId,

@@ -72,6 +72,45 @@ function findY0AndDeltaY(
   let baseDeltaY = findBaseDeltaY(amountY, minDeltaId, maxDeltaId);
   const y0 = baseDeltaY.neg().mul(maxDeltaId).add(baseDeltaY);
 
+  // Helper function to calculate total amount for given baseDeltaY
+  const calculateTotalAmount = (baseDeltaY: BN): BN => {
+    const amountInBins = getAmountInBinsBidSide(
+      activeId,
+      minDeltaId,
+      maxDeltaId,
+      baseDeltaY,
+      y0
+    );
+    return amountInBins.reduce((acc, { amountY }) => acc.add(amountY), new BN(0));
+  };
+
+  // Binary search for optimal baseDeltaY
+  let low = new BN(0);
+  let high = baseDeltaY.muln(2); // Start with 2x initial estimate as upper bound
+  
+  // Ensure high bound produces amount >= target
+  while (calculateTotalAmount(high).lt(amountY)) {
+    high = high.muln(2);
+  }
+  
+  // Binary search with precision tolerance
+  const maxIterations = 256;
+  let iteration = 0;
+  
+  while (low.lt(high) && iteration < maxIterations) {
+    const mid = low.add(high).divn(2);
+    const totalAmount = calculateTotalAmount(mid);
+    
+    if (totalAmount.gt(amountY)) {
+      high = mid;
+    } else {
+      baseDeltaY = mid;
+      low = mid.addn(1);
+    }
+    iteration++;
+  }
+  
+  // Fall back to original linear search to ensure correctness
   while (true) {
     const amountInBins = getAmountInBinsBidSide(
       activeId,
@@ -189,6 +228,46 @@ function findX0AndDeltaX(
 
   const x0 = minDeltaId.neg().mul(baseDeltaX).add(baseDeltaX);
 
+  // Helper function to calculate total amount for given baseDeltaX
+  const calculateTotalAmount = (baseDeltaX: BN): BN => {
+    const amountInBins = getAmountInBinsAskSide(
+      activeId,
+      binStep,
+      minDeltaId,
+      maxDeltaId,
+      baseDeltaX,
+      x0
+    );
+    return amountInBins.reduce((acc, { amountX }) => acc.add(amountX), new BN(0));
+  };
+
+  // Binary search for optimal baseDeltaX
+  let low = new BN(0);
+  let high = baseDeltaX.muln(2);
+  
+  // Ensure high bound produces amount >= target
+  while (calculateTotalAmount(high).lt(amountX)) {
+    high = high.muln(2);
+  }
+  
+  // Binary search with precision tolerance
+  const maxIterations = 256;
+  let iteration = 0;
+  
+  while (low.lt(high) && iteration < maxIterations) {
+    const mid = low.add(high).divn(2);
+    const totalAmount = calculateTotalAmount(mid);
+    
+    if (totalAmount.gt(amountX)) {
+      high = mid;
+    } else {
+      baseDeltaX = mid;
+      low = mid.addn(1);
+    }
+    iteration++;
+  }
+  
+  // Fall back to original linear search to ensure correctness
   while (true) {
     const amountInBins = getAmountInBinsAskSide(
       activeId,
