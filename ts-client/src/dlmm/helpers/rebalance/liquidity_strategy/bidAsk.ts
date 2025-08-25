@@ -72,7 +72,6 @@ function findY0AndDeltaY(
   let baseDeltaY = findBaseDeltaY(amountY, minDeltaId, maxDeltaId);
   const y0 = baseDeltaY.neg().mul(maxDeltaId).add(baseDeltaY);
 
-  // Helper function to calculate total amount for given baseDeltaY
   const calculateTotalAmount = (baseDeltaY: BN): BN => {
     const amountInBins = getAmountInBinsBidSide(
       activeId,
@@ -84,55 +83,30 @@ function findY0AndDeltaY(
     return amountInBins.reduce((acc, { amountY }) => acc.add(amountY), new BN(0));
   };
 
-  // Binary search for optimal baseDeltaY
   let low = new BN(0);
-  let high = baseDeltaY.muln(2); // Start with 2x initial estimate as upper bound
+  let high = baseDeltaY;
   
-  // Ensure high bound produces amount >= target
-  while (calculateTotalAmount(high).lt(amountY)) {
-    high = high.muln(2);
-  }
-  
-  // Binary search with precision tolerance
   const maxIterations = 256;
   let iteration = 0;
+  let bestDelta = new BN(0);
   
-  while (low.lt(high) && iteration < maxIterations) {
+  while (low.lte(high) && iteration < maxIterations) {
     const mid = low.add(high).divn(2);
     const totalAmount = calculateTotalAmount(mid);
     
-    if (totalAmount.gt(amountY)) {
-      high = mid;
-    } else {
-      baseDeltaY = mid;
+    if (totalAmount.lte(amountY)) {
+      bestDelta = mid;
       low = mid.addn(1);
+    } else {
+      high = mid.subn(1);
     }
     iteration++;
   }
   
-  // Fall back to original linear search to ensure correctness
-  while (true) {
-    const amountInBins = getAmountInBinsBidSide(
-      activeId,
-      minDeltaId,
-      maxDeltaId,
-      baseDeltaY,
-      y0
-    );
-
-    const totalAmountY = amountInBins.reduce((acc, { amountY }) => {
-      return acc.add(amountY);
-    }, new BN(0));
-
-    if (totalAmountY.gt(amountY)) {
-      baseDeltaY = baseDeltaY.sub(new BN(1));
-    } else {
-      return {
-        base: y0,
-        delta: baseDeltaY,
-      };
-    }
-  }
+  return {
+    base: y0,
+    delta: bestDelta,
+  };
 }
 
 function findMinX0(
@@ -228,7 +202,6 @@ function findX0AndDeltaX(
 
   const x0 = minDeltaId.neg().mul(baseDeltaX).add(baseDeltaX);
 
-  // Helper function to calculate total amount for given baseDeltaX
   const calculateTotalAmount = (baseDeltaX: BN): BN => {
     const amountInBins = getAmountInBinsAskSide(
       activeId,
@@ -241,56 +214,30 @@ function findX0AndDeltaX(
     return amountInBins.reduce((acc, { amountX }) => acc.add(amountX), new BN(0));
   };
 
-  // Binary search for optimal baseDeltaX
   let low = new BN(0);
-  let high = baseDeltaX.muln(2);
+  let high = baseDeltaX;
   
-  // Ensure high bound produces amount >= target
-  while (calculateTotalAmount(high).lt(amountX)) {
-    high = high.muln(2);
-  }
-  
-  // Binary search with precision tolerance
   const maxIterations = 256;
   let iteration = 0;
+  let bestDelta = new BN(0);
   
-  while (low.lt(high) && iteration < maxIterations) {
+  while (low.lte(high) && iteration < maxIterations) {
     const mid = low.add(high).divn(2);
     const totalAmount = calculateTotalAmount(mid);
     
-    if (totalAmount.gt(amountX)) {
-      high = mid;
-    } else {
-      baseDeltaX = mid;
+    if (totalAmount.lte(amountX)) {
+      bestDelta = mid;
       low = mid.addn(1);
+    } else {
+      high = mid.subn(1);
     }
     iteration++;
   }
   
-  // Fall back to original linear search to ensure correctness
-  while (true) {
-    const amountInBins = getAmountInBinsAskSide(
-      activeId,
-      binStep,
-      minDeltaId,
-      maxDeltaId,
-      baseDeltaX,
-      x0
-    );
-
-    const totalAmountX = amountInBins.reduce((acc, { amountX }) => {
-      return acc.add(amountX);
-    }, new BN(0));
-
-    if (totalAmountX.gt(amountX)) {
-      baseDeltaX = baseDeltaX.sub(new BN(1));
-    } else {
-      return {
-        base: x0,
-        delta: baseDeltaX,
-      };
-    }
-  }
+  return {
+    base: x0,
+    delta: bestDelta,
+  };
 }
 
 export class BidAskStrategyParameterBuilder

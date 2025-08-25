@@ -82,7 +82,6 @@ function findX0(
 
   let x0 = findBaseX0(amountX, minDeltaId, maxDeltaId, binStep, activeId);
 
-  // Helper function to calculate total amount for given x0
   const calculateTotalAmount = (x0: BN): BN => {
     const amountInBins = getAmountInBinsAskSide(
       activeId,
@@ -95,54 +94,27 @@ function findX0(
     return amountInBins.reduce((acc, bin) => acc.add(bin.amountX), new BN(0));
   };
 
-  // Binary search for optimal x0
   let low = new BN(0);
-  let high = x0.muln(2); // Start with 2x initial estimate as upper bound
+  let high = x0.muln(2);
 
-  // Ensure high bound produces amount >= target
-  while (calculateTotalAmount(high).lt(amountX)) {
-    high = high.muln(2);
-  }
-
-  // Binary search with precision tolerance
   const maxIterations = 256;
   let iteration = 0;
+  let bestX0 = new BN(0);
 
-  while (low.lt(high) && iteration < maxIterations) {
+  while (low.lte(high) && iteration < maxIterations) {
     const mid = low.add(high).divn(2);
     const totalAmount = calculateTotalAmount(mid);
     
     if (totalAmount.lt(amountX)) {
-      x0 = mid;
+      bestX0 = mid;
       low = mid.addn(1);
     } else {
-      high = mid;
+      high = mid.subn(1);
     }
     iteration++;
   }
   
-  // If binary search didn't converge, fall back to original linear search
-  while (true) {
-    const amountInBins = getAmountInBinsAskSide(
-      activeId,
-      binStep,
-      minDeltaId,
-      maxDeltaId,
-      new BN(0),
-      x0
-    );
-
-    const totalAmountX = amountInBins.reduce((acc, bin) => {
-      return acc.add(bin.amountX);
-    }, new BN(0));
-
-    if (totalAmountX.lt(amountX)) {
-      x0 = x0.add(new BN(1));
-    } else {
-      x0 = x0.sub(new BN(1));
-      return x0;
-    }
-  }
+  return bestX0;
 }
 
 export class SpotStrategyParameterBuilder

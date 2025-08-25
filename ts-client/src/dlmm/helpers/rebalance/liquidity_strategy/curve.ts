@@ -63,7 +63,6 @@ function findY0AndDeltaY(
 
   let baseY0 = findBaseY0(amountY, minDeltaId, maxDeltaId);
 
-  // Helper function to calculate total amount for given baseY0
   const calculateTotalAmount = (baseY0: BN): BN => {
     const deltaY = baseY0.neg().div(minDeltaId.neg().addn(1));
     const amountInBins = getAmountInBinsBidSide(
@@ -76,57 +75,31 @@ function findY0AndDeltaY(
     return amountInBins.reduce((acc, { amountY }) => acc.add(amountY), new BN(0));
   };
 
-  // Binary search for optimal baseY0
   let low = new BN(0);
-  let high = baseY0.muln(2); // Start with 2x initial estimate as upper bound
+  let high = baseY0;
   
-  // Ensure high bound produces amount >= target
-  while (calculateTotalAmount(high).lt(amountY)) {
-    high = high.muln(2);
-  }
-  
-  // Binary search with precision tolerance
   const maxIterations = 256;
   let iteration = 0;
+  let bestBase = new BN(0);
   
-  while (low.lt(high) && iteration < maxIterations) {
+  while (low.lte(high) && iteration < maxIterations) {
     const mid = low.add(high).divn(2);
     const totalAmount = calculateTotalAmount(mid);
     
-    if (totalAmount.gt(amountY)) {
-      high = mid;
-    } else {
-      baseY0 = mid;
+    if (totalAmount.lte(amountY)) {
+      bestBase = mid;
       low = mid.addn(1);
+    } else {
+      high = mid.subn(1);
     }
     iteration++;
   }
   
-  // Fall back to original linear search to ensure correctness
-  while (true) {
-    const deltaY = baseY0.neg().div(minDeltaId.neg().addn(1));
-
-    const amountInBins = getAmountInBinsBidSide(
-      activeId,
-      minDeltaId,
-      maxDeltaId,
-      deltaY,
-      baseY0
-    );
-
-    const totalAmountY = amountInBins.reduce((acc, { amountY }) => {
-      return acc.add(amountY);
-    }, new BN(0));
-
-    if (totalAmountY.gt(amountY)) {
-      baseY0 = baseY0.sub(new BN(1));
-    } else {
-      return {
-        base: baseY0,
-        delta: deltaY,
-      };
-    }
-  }
+  const deltaY = bestBase.neg().div(minDeltaId.neg().addn(1));
+  return {
+    base: bestBase,
+    delta: deltaY,
+  };
 }
 
 function findBaseX0(
@@ -190,10 +163,9 @@ function findX0AndDeltaX(
   }
 
   let baseX0 = findBaseX0(amountX, minDeltaId, maxDeltaId, binStep, activeId);
-  const deltaX = baseX0.neg().div(maxDeltaId);
 
-  // Helper function to calculate total amount for given baseX0
   const calculateTotalAmount = (baseX0: BN): BN => {
+    const deltaX = baseX0.neg().div(maxDeltaId);
     const amountInBins = getAmountInBinsAskSide(
       activeId,
       binStep,
@@ -205,56 +177,31 @@ function findX0AndDeltaX(
     return amountInBins.reduce((acc, { amountX }) => acc.add(amountX), new BN(0));
   };
 
-  // Binary search for optimal baseX0
   let low = new BN(0);
-  let high = baseX0.muln(2); // Start with 2x initial estimate as upper bound
+  let high = baseX0;
   
-  // Ensure high bound produces amount >= target
-  while (calculateTotalAmount(high).lt(amountX)) {
-    high = high.muln(2);
-  }
-  
-  // Binary search with precision tolerance
   const maxIterations = 256;
   let iteration = 0;
+  let bestBase = new BN(0);
   
-  while (low.lt(high) && iteration < maxIterations) {
+  while (low.lte(high) && iteration < maxIterations) {
     const mid = low.add(high).divn(2);
     const totalAmount = calculateTotalAmount(mid);
     
-    if (totalAmount.gt(amountX)) {
-      high = mid;
-    } else {
-      baseX0 = mid;
+    if (totalAmount.lte(amountX)) {
+      bestBase = mid;
       low = mid.addn(1);
+    } else {
+      high = mid.subn(1);
     }
     iteration++;
   }
   
-  // Fall back to original linear search to ensure correctness
-  while (true) {
-    const amountInBins = getAmountInBinsAskSide(
-      activeId,
-      binStep,
-      minDeltaId,
-      maxDeltaId,
-      deltaX,
-      baseX0
-    );
-
-    const totalAmountX = amountInBins.reduce((acc, { amountX }) => {
-      return acc.add(amountX);
-    }, new BN(0));
-
-    if (totalAmountX.gt(amountX)) {
-      baseX0 = baseX0.sub(new BN(1));
-    } else {
-      return {
-        base: baseX0,
-        delta: deltaX,
-      };
-    }
-  }
+  const deltaX = bestBase.neg().div(maxDeltaId);
+  return {
+    base: bestBase,
+    delta: deltaX,
+  };
 }
 
 export class CurveStrategyParameterBuilder
