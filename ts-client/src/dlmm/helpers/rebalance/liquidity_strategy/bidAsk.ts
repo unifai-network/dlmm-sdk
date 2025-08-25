@@ -83,12 +83,12 @@ function findY0AndDeltaY(
     return amountInBins.reduce((acc, { amountY }) => acc.add(amountY), new BN(0));
   };
 
-  let low = new BN(0);
+  let low = new BN(1);
   let high = baseDeltaY;
   
   const maxIterations = 256;
   let iteration = 0;
-  let bestDelta = new BN(0);
+  let bestDelta = baseDeltaY;
   
   while (low.lte(high) && iteration < maxIterations) {
     const mid = low.add(high).divn(2);
@@ -214,12 +214,12 @@ function findX0AndDeltaX(
     return amountInBins.reduce((acc, { amountX }) => acc.add(amountX), new BN(0));
   };
 
-  let low = new BN(0);
+  let low = new BN(1);
   let high = baseDeltaX;
   
   const maxIterations = 256;
   let iteration = 0;
-  let bestDelta = new BN(0);
+  let bestDelta = baseDeltaX;
   
   while (low.lte(high) && iteration < maxIterations) {
     const mid = low.add(high).divn(2);

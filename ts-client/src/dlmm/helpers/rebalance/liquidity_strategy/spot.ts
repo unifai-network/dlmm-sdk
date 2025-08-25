@@ -94,12 +94,12 @@ function findX0(
     return amountInBins.reduce((acc, bin) => acc.add(bin.amountX), new BN(0));
   };
 
-  let low = new BN(0);
+  let low = new BN(1);
   let high = x0.muln(2);
 
   const maxIterations = 256;
   let iteration = 0;
-  let bestX0 = new BN(0);
+  let bestX0 = x0;
 
   while (low.lte(high) && iteration < maxIterations) {
     const mid = low.add(high).divn(2);
